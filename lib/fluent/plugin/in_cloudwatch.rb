@@ -52,12 +52,6 @@ class Fluent::CloudwatchInput < Fluent::Input
       :http_open_timeout => @open_timeout,
       :http_read_timeout => @read_timeout,
     )
-
-    @cw = AWS::CloudWatch.new(
-      :access_key_id        => @aws_key_id,
-      :secret_access_key    => @aws_sec_key,
-      :cloud_watch_endpoint => @cw_endpoint,
-    ).client
   end
 
   def start
@@ -80,8 +74,14 @@ class Fluent::CloudwatchInput < Fluent::Input
   end
 
   def output
+    cw = AWS::CloudWatch.new(
+      :access_key_id        => @aws_key_id,
+      :secret_access_key    => @aws_sec_key,
+      :cloud_watch_endpoint => @cw_endpoint,
+    ).client
+
     @metric_name.split(",").each {|m|
-      statistics = @cw.get_metric_statistics({
+      statistics = cw.get_metric_statistics({
         :namespace   => @namespace,
         :metric_name => m,
         :statistics  => [@statistics],
@@ -102,9 +102,9 @@ class Fluent::CloudwatchInput < Fluent::Input
         output_data = {m => data}
         Fluent::Engine.emit(tag, catch_time, output_data)
       else
-        log.warn "cloudwatch: statistics[:datapoints] is empty"
+        log.warn "cloudwatch: #{@namespace} #{m} statistics[:datapoints] is empty"
       end
     }
-    sleep 1
+
   end
 end
